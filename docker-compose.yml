@@ -1,0 +1,72 @@
+version: "3.8"
+
+services:
+  nextjs-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nextjs-app
+    restart: always
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - app-network
+
+  # 如果需要数据库，可以取消注释以下部分
+  # db:
+  #   image: postgres:14-alpine
+  #   container_name: postgres-db
+  #   restart: always
+  #   environment:
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=postgres
+  #     - POSTGRES_DB=nextjs_db
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   networks:
+  #     - app-network
+
+  # 如果需要Redis，可以取消注释以下部分
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: redis-cache
+  #   restart: always
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - app-network
+
+  # 如果需要Traefik作为反向代理，可以取消注释以下部分
+  traefik:
+    image: traefik:v2.9
+    container_name: traefik
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080" # Traefik Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik.yml:/etc/traefik/traefik.yml
+      - ./dynamic:/etc/dokploy/traefik/dynamic
+    networks:
+      - app-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.localhost`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.entrypoints=web"
+
+networks:
+  app-network:
+    driver: bridge
+# 如果使用了数据库或Redis，取消注释以下卷配置
+# volumes:
+#   postgres_data:
+#   redis_data:
